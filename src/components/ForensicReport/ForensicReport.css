@@ -1,0 +1,247 @@
+.forensic-report {
+  position: relative;
+  background-color: #0f1117;
+  border: 1px solid #1e2330;
+  border-radius: 8px;
+  padding: 24px;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+/* Scan-line texture overlay */
+.forensic-report::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(15, 17, 23, 0.3) 2px,
+    rgba(15, 17, 23, 0.3) 4px
+  );
+  z-index: 1;
+}
+
+.forensic-report > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Collapsible section */
+.forensic-section {
+  margin-bottom: 16px;
+  border: 1px solid #1e2330;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.forensic-section:last-child {
+  margin-bottom: 0;
+}
+
+.forensic-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #161b26;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  color: #f59e0b;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.forensic-section-header:hover {
+  background-color: #1e2330;
+}
+
+.forensic-section-chevron {
+  transition: transform 200ms ease;
+  font-size: 12px;
+  color: #f59e0b;
+}
+
+.forensic-section-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+.forensic-section-content {
+  padding: 16px;
+  background-color: #0f1117;
+}
+
+/* Metadata fields */
+.metadata-fields {
+  display: grid;
+  gap: 8px;
+}
+
+.metadata-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-radius: 3px;
+  background-color: #161b26;
+  font-size: 12px;
+  opacity: 0;
+  animation: fieldFadeIn 200ms ease forwards;
+}
+
+.metadata-field-name {
+  font-weight: 500;
+  color: #94a3b8;
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.metadata-field-value {
+  text-align: right;
+  word-break: break-all;
+}
+
+/* Field color coding */
+.metadata-field--green .metadata-field-value {
+  color: #22c55e;
+}
+
+.metadata-field--amber .metadata-field-value {
+  color: #f59e0b;
+}
+
+.metadata-field--red .metadata-field-value {
+  color: #ef4444;
+}
+
+/* Detection signals */
+.detection-signals {
+  display: grid;
+  gap: 8px;
+}
+
+.detection-signal {
+  padding: 10px 12px;
+  border-radius: 4px;
+  background-color: #161b26;
+  border-left: 3px solid #f59e0b;
+  opacity: 0;
+  animation: fieldFadeIn 200ms ease forwards;
+}
+
+.detection-signal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.detection-signal-type {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f59e0b;
+  text-transform: uppercase;
+}
+
+.detection-signal-severity {
+  font-size: 10px;
+  color: #94a3b8;
+  padding: 1px 6px;
+  background-color: #1e2330;
+  border-radius: 3px;
+}
+
+.detection-signal-description {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.detection-signal-trigger {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.no-signals {
+  font-size: 12px;
+  color: #22c55e;
+  padding: 8px 0;
+}
+
+/* Scoring breakdown */
+.scoring-breakdown {
+  display: grid;
+  gap: 6px;
+}
+
+.scoring-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 3px;
+  background-color: #161b26;
+  font-size: 12px;
+  opacity: 0;
+  animation: fieldFadeIn 200ms ease forwards;
+}
+
+.scoring-entry-type {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.scoring-entry-deduction {
+  font-weight: 600;
+}
+
+.scoring-entry-deduction--triggered {
+  color: #ef4444;
+}
+
+.scoring-entry-deduction--clear {
+  color: #22c55e;
+}
+
+/* Verdict section */
+.verdict-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Staggered animation */
+@keyframes fieldFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Placeholder state */
+.forensic-report-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  font-size: 13px;
+}
