@@ -4,7 +4,9 @@ import {
   ScoringResult,
   ScoringBreakdownEntry,
   Verdict,
+  ImageSource,
   MAX_DEDUCTIONS,
+  AI_SOFTWARE_KEYWORDS,
 } from './types';
 
 /**
@@ -33,6 +35,74 @@ function mapScoreToVerdict(score: number): Verdict {
 }
 
 /**
+ * Determines the likely source/origin of the image based on signals and metadata.
+ */
+function determineSource(signals: DetectionSignal[]): ImageSource {
+  // Check for AI software fingerprint
+  const softwareSignal = signals.find((s) => s.type === 'SOFTWARE_FINGERPRINT');
+  if (softwareSignal) {
+    // Extract the matched keyword from the description
+    const matchedKeyword = AI_SOFTWARE_KEYWORDS.find((kw) =>
+      softwareSignal.description.toLowerCase().includes(kw.toLowerCase())
+    );
+    const label = matchedKeyword
+      ? matchedKeyword.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      : 'AI Generator';
+    return {
+      type: 'ai_generated',
+      label: `AI Generated (${label})`,
+      confidence: 'high',
+    };
+  }
+
+  // Check if many signals suggest synthetic origin
+  const missingExif = signals.find((s) => s.type === 'MISSING_EXIF');
+  const missingGps = signals.find((s) => s.type === 'MISSING_GPS');
+  const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
+
+  if (missingExif && missingExif.severity >= 0.66 && missingGps) {
+    return {
+      type: 'ai_generated',
+      label: 'Likely AI Generated (no camera metadata)',
+      confidence: 'medium',
+    };
+  }
+
+  // Check for editing software (timestamp issues + some EXIF present)
+  if (timestampIssue && timestampIssue.severity > 0.5 && !missingExif) {
+    return {
+      type: 'edited',
+      label: 'Edited/Post-processed image',
+      confidence: 'medium',
+    };
+  }
+
+  // If no significant signals, it's likely from a camera
+  if (signals.length === 0) {
+    return {
+      type: 'camera',
+      label: 'Camera/Device capture',
+      confidence: 'high',
+    };
+  }
+
+  // Minor signals but not enough to identify AI
+  if (signals.length <= 2 && !missingExif && !softwareSignal) {
+    return {
+      type: 'camera',
+      label: 'Camera/Device capture (minor anomalies)',
+      confidence: 'medium',
+    };
+  }
+
+  return {
+    type: 'unknown',
+    label: 'Unknown origin',
+    confidence: 'low',
+  };
+}
+
+/**
  * Computes the authenticity score from a set of detection signals.
  *
  * Algorithm:
@@ -43,10 +113,11 @@ function mapScoreToVerdict(score: number): Verdict {
  * 5. Subtract deduction from score
  * 6. Clamp final score to [0, 100]
  * 7. Map score to verdict
- * 8. Produce breakdown with all 6 signal types
+ * 8. Determine image source
+ * 9. Produce breakdown with all 6 signal types
  *
  * @param signals - Array of detection signals produced by the Detection Engine
- * @returns ScoringResult with score, verdict, signals, and breakdown
+ * @returns ScoringResult with score, verdict, source, signals, and breakdown
  */
 export function computeScore(signals: DetectionSignal[]): ScoringResult {
   let score = 100;
@@ -83,10 +154,12 @@ export function computeScore(signals: DetectionSignal[]): ScoringResult {
   score = Math.max(0, score);
 
   const verdict = mapScoreToVerdict(score);
+  const source = determineSource(signals);
 
   return {
     score,
     verdict,
+    source,
     signals,
     breakdown,
   };

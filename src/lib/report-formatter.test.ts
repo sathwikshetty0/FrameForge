@@ -58,14 +58,15 @@ function makeGenuineResult(): ScoringResult {
   return {
     score: 95,
     verdict: 'GENUINE',
+    source: { type: 'camera', label: 'Camera/Device capture', confidence: 'high' },
     signals: [],
     breakdown: [
-      { signalType: 'SOFTWARE_FINGERPRINT', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
-      { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 25 },
-      { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-      { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-      { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
-      { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 5 },
+      { signalType: 'SOFTWARE_FINGERPRINT', triggered: false, pointsDeducted: 0, maxDeduction: 40 },
+      { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
+      { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+      { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+      { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
+      { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
     ],
   };
 }
@@ -164,14 +165,15 @@ describe('formatReport', () => {
     const result: ScoringResult = {
       score: 70,
       verdict: 'GENUINE',
+      source: { type: 'ai_generated', label: 'AI Generated (Stable Diffusion)', confidence: 'high' },
       signals,
       breakdown: [
-        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 30, maxDeduction: 30 },
-        { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 25 },
-        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
-        { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 5 },
+        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 30, maxDeduction: 40 },
+        { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
+        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
+        { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
       ],
     };
 
@@ -191,29 +193,30 @@ describe('formatReport', () => {
     const result: ScoringResult = {
       score: 55,
       verdict: 'SUSPICIOUS',
+      source: { type: 'ai_generated', label: 'AI Generated (Software Match)', confidence: 'high' },
       signals: [
         { type: 'SOFTWARE_FINGERPRINT', severity: 1.0, triggerField: 'software', description: 'Match' },
         { type: 'MISSING_GPS', severity: 1.0, triggerField: 'gpsLatitude', description: 'No GPS' },
       ],
       breakdown: [
-        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 30, maxDeduction: 30 },
-        { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 25 },
-        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: true, pointsDeducted: 10, maxDeduction: 15 },
-        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
-        { signalType: 'MISSING_GPS', triggered: true, pointsDeducted: 5, maxDeduction: 5 },
+        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 30, maxDeduction: 40 },
+        { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
+        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: true, pointsDeducted: 10, maxDeduction: 20 },
+        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
+        { signalType: 'MISSING_GPS', triggered: true, pointsDeducted: 5, maxDeduction: 10 },
       ],
     };
 
     const report = formatReport(metadata, result, fileName, analysisTimestamp);
 
     expect(report).toContain('--- SCORING BREAKDOWN ---');
-    expect(report).toContain('Software Fingerprint: -30 (max -30)');
-    expect(report).toContain('Missing EXIF: -0 (max -25)');
-    expect(report).toContain('Timestamp Inconsistency: -10 (max -15)');
-    expect(report).toContain('File Size Anomaly: -0 (max -15)');
-    expect(report).toContain('Color Profile Abnormality: -0 (max -10)');
-    expect(report).toContain('Missing GPS: -5 (max -5)');
+    expect(report).toContain('Software Fingerprint: -30 (max -40)');
+    expect(report).toContain('Missing EXIF: -0 (max -30)');
+    expect(report).toContain('Timestamp Inconsistency: -10 (max -20)');
+    expect(report).toContain('File Size Anomaly: -0 (max -20)');
+    expect(report).toContain('Color Profile Abnormality: -0 (max -15)');
+    expect(report).toContain('Missing GPS: -5 (max -10)');
   });
 
   it('should include the verdict section with score and verdict', () => {
@@ -221,14 +224,15 @@ describe('formatReport', () => {
     const result: ScoringResult = {
       score: 25,
       verdict: 'LIKELY SYNTHETIC',
+      source: { type: 'ai_generated', label: 'Likely AI Generated (no camera metadata)', confidence: 'medium' },
       signals: [],
       breakdown: [
-        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 30, maxDeduction: 30 },
-        { signalType: 'MISSING_EXIF', triggered: true, pointsDeducted: 25, maxDeduction: 25 },
-        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: true, pointsDeducted: 15, maxDeduction: 15 },
-        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
-        { signalType: 'MISSING_GPS', triggered: true, pointsDeducted: 5, maxDeduction: 5 },
+        { signalType: 'SOFTWARE_FINGERPRINT', triggered: true, pointsDeducted: 40, maxDeduction: 40 },
+        { signalType: 'MISSING_EXIF', triggered: true, pointsDeducted: 30, maxDeduction: 30 },
+        { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: true, pointsDeducted: 20, maxDeduction: 20 },
+        { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+        { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
+        { signalType: 'MISSING_GPS', triggered: true, pointsDeducted: 10, maxDeduction: 10 },
       ],
     };
 

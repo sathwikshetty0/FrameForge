@@ -19,9 +19,9 @@ describe('computeScore', () => {
       },
     ];
     const result = computeScore(signals);
-    // 100 - round(30 * 1.0) = 70
-    expect(result.score).toBe(70);
-    expect(result.verdict).toBe('GENUINE');
+    // 100 - round(40 * 1.0) = 60
+    expect(result.score).toBe(60);
+    expect(result.verdict).toBe('SUSPICIOUS');
   });
 
   it('deduplicates same-type signals using highest severity', () => {
@@ -46,8 +46,8 @@ describe('computeScore', () => {
       },
     ];
     const result = computeScore(signals);
-    // 100 - round(25 * 0.8) = 100 - 20 = 80
-    expect(result.score).toBe(80);
+    // 100 - round(30 * 0.8) = 100 - 24 = 76
+    expect(result.score).toBe(76);
     expect(result.verdict).toBe('GENUINE');
   });
 
@@ -61,7 +61,7 @@ describe('computeScore', () => {
       { type: 'MISSING_GPS', severity: 1.0, triggerField: 'gpsLatitude', description: 'No GPS' },
     ];
     const result = computeScore(signals);
-    // 100 - 30 - 25 - 15 - 15 - 10 - 5 = 0
+    // 100 - 40 - 30 - 20 - 20 - 15 - 10 = -35, clamped to 0
     expect(result.score).toBe(0);
     expect(result.verdict).toBe('LIKELY SYNTHETIC');
   });
@@ -72,8 +72,8 @@ describe('computeScore', () => {
       { type: 'MISSING_GPS', severity: 1.0, triggerField: 'gpsLatitude', description: 'No GPS' },
     ];
     const result = computeScore(signals);
-    // 100 - 30 - 5 = 65
-    expect(result.score).toBe(65);
+    // 100 - 40 - 10 = 50
+    expect(result.score).toBe(50);
     expect(result.verdict).toBe('SUSPICIOUS');
   });
 
@@ -84,8 +84,8 @@ describe('computeScore', () => {
       { type: 'TIMESTAMP_INCONSISTENCY', severity: 1.0, triggerField: 'dateTimeOriginal', description: 'Inconsistent' },
     ];
     const result = computeScore(signals);
-    // 100 - 30 - 25 - 15 = 30
-    expect(result.score).toBe(30);
+    // 100 - 40 - 30 - 20 = 10
+    expect(result.score).toBe(10);
     expect(result.verdict).toBe('LIKELY SYNTHETIC');
   });
 
@@ -110,23 +110,23 @@ describe('computeScore', () => {
 
     const softwareEntry = result.breakdown.find((b) => b.signalType === 'SOFTWARE_FINGERPRINT')!;
     expect(softwareEntry.triggered).toBe(true);
-    expect(softwareEntry.pointsDeducted).toBe(15); // round(30 * 0.5)
+    expect(softwareEntry.pointsDeducted).toBe(20); // round(40 * 0.5)
 
     const gpsEntry = result.breakdown.find((b) => b.signalType === 'MISSING_GPS')!;
     expect(gpsEntry.triggered).toBe(false);
     expect(gpsEntry.pointsDeducted).toBe(0);
-    expect(gpsEntry.maxDeduction).toBe(5);
+    expect(gpsEntry.maxDeduction).toBe(10);
   });
 
   it('includes maxDeduction in each breakdown entry', () => {
     const result = computeScore([]);
     const expected: Record<string, number> = {
-      SOFTWARE_FINGERPRINT: 30,
-      MISSING_EXIF: 25,
-      TIMESTAMP_INCONSISTENCY: 15,
-      FILE_SIZE_ANOMALY: 15,
-      COLOR_PROFILE_ABNORMALITY: 10,
-      MISSING_GPS: 5,
+      SOFTWARE_FINGERPRINT: 40,
+      MISSING_EXIF: 30,
+      TIMESTAMP_INCONSISTENCY: 20,
+      FILE_SIZE_ANOMALY: 20,
+      COLOR_PROFILE_ABNORMALITY: 15,
+      MISSING_GPS: 10,
     };
     for (const entry of result.breakdown) {
       expect(entry.maxDeduction).toBe(expected[entry.signalType]);
@@ -146,7 +146,7 @@ describe('computeScore', () => {
       { type: 'MISSING_EXIF', severity: 0.33, triggerField: 'cameraMake', description: 'Partial' },
     ];
     const result = computeScore(signals);
-    // 100 - round(25 * 0.33) = 100 - round(8.25) = 100 - 8 = 92
-    expect(result.score).toBe(92);
+    // 100 - round(30 * 0.33) = 100 - round(9.9) = 100 - 10 = 90
+    expect(result.score).toBe(90);
   });
 });

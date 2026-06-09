@@ -91,6 +91,13 @@ export function formatReport(
   lines.push(`Analyzed: ${analysisTimestamp.toISOString()}`);
   lines.push('');
 
+  // --- Image Source ---
+  lines.push('--- IMAGE SOURCE ---');
+  lines.push(`Source: ${result.source.label}`);
+  lines.push(`Type: ${result.source.type}`);
+  lines.push(`Confidence: ${result.source.confidence}`);
+  lines.push('');
+
   // --- Metadata ---
   lines.push('--- METADATA ---');
   lines.push(`Camera Make: ${formatFieldValue(metadata.cameraMake, '')}`);

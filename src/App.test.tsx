@@ -35,6 +35,7 @@ vi.mock('./lib/scoring', () => ({
   computeScore: vi.fn().mockReturnValue({
     score: 95,
     verdict: 'GENUINE',
+    source: { type: 'camera', label: 'Camera/Device capture', confidence: 'high' },
     signals: [],
     breakdown: [],
   }),

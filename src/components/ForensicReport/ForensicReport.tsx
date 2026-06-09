@@ -281,6 +281,15 @@ export function ForensicReport({
   if (state === 'COMPLETE' && metadata && result) {
     return (
       <div className="forensic-report" data-testid="forensic-report">
+        {/* Image Source Banner */}
+        <div className={`source-banner source-banner--${result.source.type}`} data-testid="source-banner">
+          <div className="source-banner-label">Image Source</div>
+          <div className="source-banner-value">{result.source.label}</div>
+          <div className="source-banner-confidence">
+            Confidence: <span className={`confidence-${result.source.confidence}`}>{result.source.confidence}</span>
+          </div>
+        </div>
+
         <CollapsibleSection title="Raw Metadata">
           <MetadataFields metadata={metadata} signals={result.signals} />
         </CollapsibleSection>

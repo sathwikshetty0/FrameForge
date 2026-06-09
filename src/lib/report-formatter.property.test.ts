@@ -125,13 +125,18 @@ function arbScoringResult(): fc.Arbitrary<ScoringResult> {
   return fc.record({
     score: fc.integer({ min: 0, max: 100 }),
     verdict: fc.constantFrom('GENUINE' as const, 'SUSPICIOUS' as const, 'LIKELY SYNTHETIC' as const),
+    source: fc.record({
+      type: fc.constantFrom('camera' as const, 'ai_generated' as const, 'edited' as const, 'unknown' as const),
+      label: fc.string({ minLength: 1, maxLength: 50 }),
+      confidence: fc.constantFrom('high' as const, 'medium' as const, 'low' as const),
+    }),
     signals: fc.constant([]),
     breakdown: fc.constant(
       allSignalTypes.map(signalType => ({
         signalType,
         triggered: false,
         pointsDeducted: 0,
-        maxDeduction: 30,
+        maxDeduction: 40,
       }))
     ),
   });

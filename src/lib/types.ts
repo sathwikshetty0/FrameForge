@@ -63,8 +63,18 @@ export type SignalType =
 export interface ScoringResult {
   score: number; // 0–100 integer
   verdict: Verdict;
+  source: ImageSource;
   signals: DetectionSignal[];
   breakdown: ScoringBreakdownEntry[];
+}
+
+/**
+ * Identified source/origin of the image based on analysis.
+ */
+export interface ImageSource {
+  type: 'camera' | 'ai_generated' | 'edited' | 'unknown';
+  label: string; // e.g., "Canon EOS R5", "DALL-E", "Unknown origin"
+  confidence: 'high' | 'medium' | 'low';
 }
 
 /**
@@ -148,14 +158,16 @@ export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 
 /**
  * Maximum point deductions per signal type.
+ * Weights are aggressive enough that a typical AI image (missing EXIF,
+ * software fingerprint, no GPS, missing timestamps) scores well below 40.
  */
 export const MAX_DEDUCTIONS: Record<SignalType, number> = {
-  SOFTWARE_FINGERPRINT: 30,
-  MISSING_EXIF: 25,
-  TIMESTAMP_INCONSISTENCY: 15,
-  FILE_SIZE_ANOMALY: 15,
-  COLOR_PROFILE_ABNORMALITY: 10,
-  MISSING_GPS: 5,
+  SOFTWARE_FINGERPRINT: 40,
+  MISSING_EXIF: 30,
+  TIMESTAMP_INCONSISTENCY: 20,
+  FILE_SIZE_ANOMALY: 20,
+  COLOR_PROFILE_ABNORMALITY: 15,
+  MISSING_GPS: 10,
 };
 
 /**

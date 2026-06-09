@@ -30,14 +30,15 @@ function makeResult(): ScoringResult {
   return {
     score: 85,
     verdict: 'GENUINE',
+    source: { type: 'camera', label: 'Camera/Device capture', confidence: 'high' },
     signals: [],
     breakdown: [
-      { signalType: 'SOFTWARE_FINGERPRINT', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
-      { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 25 },
-      { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-      { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
-      { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
-      { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 5 },
+      { signalType: 'SOFTWARE_FINGERPRINT', triggered: false, pointsDeducted: 0, maxDeduction: 40 },
+      { signalType: 'MISSING_EXIF', triggered: false, pointsDeducted: 0, maxDeduction: 30 },
+      { signalType: 'TIMESTAMP_INCONSISTENCY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+      { signalType: 'FILE_SIZE_ANOMALY', triggered: false, pointsDeducted: 0, maxDeduction: 20 },
+      { signalType: 'COLOR_PROFILE_ABNORMALITY', triggered: false, pointsDeducted: 0, maxDeduction: 15 },
+      { signalType: 'MISSING_GPS', triggered: false, pointsDeducted: 0, maxDeduction: 10 },
     ],
   };
 }
