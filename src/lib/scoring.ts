@@ -36,11 +36,40 @@ function mapScoreToVerdict(score: number): Verdict {
 }
 
 /**
+ * Known non-AI software tools that generate images programmatically.
+ * These are legitimate tools (plotting, design, screenshots) — not AI generators.
+ */
+const KNOWN_SOFTWARE_TOOLS: Array<{ keyword: string; category: string }> = [
+  { keyword: 'matplotlib', category: 'Python plotting library' },
+  { keyword: 'gimp', category: 'Image editor' },
+  { keyword: 'inkscape', category: 'Vector graphics editor' },
+  { keyword: 'figma', category: 'Design tool' },
+  { keyword: 'canva', category: 'Design tool' },
+  { keyword: 'sketch', category: 'Design tool' },
+  { keyword: 'affinity', category: 'Image editor' },
+  { keyword: 'paint.net', category: 'Image editor' },
+  { keyword: 'krita', category: 'Digital art tool' },
+  { keyword: 'blender', category: '3D rendering' },
+  { keyword: 'unity', category: 'Game engine render' },
+  { keyword: 'unreal', category: 'Game engine render' },
+  { keyword: 'lightroom', category: 'Photo editor' },
+  { keyword: 'capture one', category: 'Photo editor' },
+  { keyword: 'snagit', category: 'Screenshot tool' },
+  { keyword: 'greenshot', category: 'Screenshot tool' },
+  { keyword: 'sharex', category: 'Screenshot tool' },
+  { keyword: 'pillow', category: 'Python imaging library' },
+  { keyword: 'imagemagick', category: 'Image processing tool' },
+  { keyword: 'opencv', category: 'Computer vision library' },
+  { keyword: 'screenshot', category: 'Screenshot' },
+  { keyword: 'snipping', category: 'Screenshot tool' },
+];
+
+/**
  * Determines the likely source/origin of the image based on signals and metadata.
- * Uses camera make/model when available to identify the device.
+ * Uses camera make/model and software field to identify the source.
  */
 function determineSource(signals: DetectionSignal[], metadata?: MetadataResult | null): ImageSource {
-  // Check for AI software fingerprint — strongest signal
+  // Check for AI software fingerprint — strongest AI signal
   const softwareSignal = signals.find((s) => s.type === 'SOFTWARE_FINGERPRINT');
   if (softwareSignal) {
     const matchedKeyword = AI_SOFTWARE_KEYWORDS.find((kw) =>
@@ -56,7 +85,29 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
     };
   }
 
-  // If camera make or model is present, it's from a camera regardless of other signals
+  // Check if software field identifies a known non-AI tool
+  const softwareValue = metadata?.software?.status === 'present' ? metadata.software.value : null;
+  if (softwareValue) {
+    const lowerSoftware = softwareValue.toLowerCase();
+    const matchedTool = KNOWN_SOFTWARE_TOOLS.find((tool) =>
+      lowerSoftware.includes(tool.keyword.toLowerCase())
+    );
+    if (matchedTool) {
+      return {
+        type: 'edited',
+        label: `${matchedTool.category} (${softwareValue.split(',')[0].trim()})`,
+        confidence: 'high',
+      };
+    }
+    // Software present but not recognized as AI or known tool — use it as-is
+    return {
+      type: 'edited',
+      label: `Software: ${softwareValue.split(',')[0].trim()}`,
+      confidence: 'medium',
+    };
+  }
+
+  // If camera make or model is present, it's from a camera
   const hasCameraMake = metadata?.cameraMake?.status === 'present' && metadata.cameraMake.value;
   const hasCameraModel = metadata?.cameraModel?.status === 'present' && metadata.cameraModel.value;
 
@@ -66,7 +117,6 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
       hasCameraModel ? metadata!.cameraModel.value : null,
     ].filter(Boolean).join(' ');
 
-    // Check for editing indicators (timestamp issues but camera metadata present)
     const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
     if (timestampIssue && timestampIssue.severity > 0.5) {
       return {
@@ -83,7 +133,7 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
     };
   }
 
-  // No camera metadata at all — check if signals suggest synthetic origin
+  // No camera metadata and no software — check if signals suggest synthetic origin
   const missingExif = signals.find((s) => s.type === 'MISSING_EXIF');
   const missingGps = signals.find((s) => s.type === 'MISSING_GPS');
 
@@ -103,7 +153,6 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
     };
   }
 
-  // No significant signals and no camera info
   if (signals.length === 0) {
     return {
       type: 'camera',
@@ -112,7 +161,6 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
     };
   }
 
-  // Some signals but not enough to conclusively identify
   return {
     type: 'camera',
     label: 'Camera/Device capture (minor anomalies)',
