@@ -16,6 +16,7 @@ export interface ForensicReportProps {
   metadata: MetadataResult | null;
   result: ScoringResult | null;
   thumbnail: string | null;
+  rawExif?: Record<string, unknown> | null;
 }
 
 /** Human-readable labels for metadata field keys */
@@ -95,7 +96,8 @@ function formatFieldValue(
   const unit = FIELD_UNITS[key] || '';
 
   if (field.value instanceof Date) {
-    return field.value.toISOString();
+    // Show human-readable date + time
+    return field.value.toLocaleString() + ' (' + field.value.toISOString() + ')';
   }
   if (typeof field.value === 'number') {
     return `${field.value}${unit ? ' ' + unit : ''}`;
@@ -253,6 +255,48 @@ function ScoringBreakdown({
   );
 }
 
+/** Renders ALL raw EXIF data from the image as a complete dump */
+function RawExifDump({ rawExif }: { rawExif: Record<string, unknown> }) {
+  const entries = Object.entries(rawExif).sort(([a], [b]) => a.localeCompare(b));
+
+  return (
+    <div className="raw-exif-dump" data-testid="raw-exif-dump">
+      {entries.map(([key, value], index) => {
+        const delay = index * 50;
+        const displayValue = formatRawValue(value);
+        return (
+          <div
+            key={key}
+            className="raw-exif-entry"
+            style={{ animationDelay: `${delay}ms` }}
+          >
+            <span className="raw-exif-key">{key}</span>
+            <span className="raw-exif-value">{displayValue}</span>
+          </div>
+        );
+      })}
+      <div className="raw-exif-count">
+        {entries.length} metadata fields found
+      </div>
+    </div>
+  );
+}
+
+/** Format a raw EXIF value for display */
+function formatRawValue(value: unknown): string {
+  if (value === null || value === undefined) return 'null';
+  if (value instanceof Date) {
+    return value.toLocaleString() + ' (' + value.toISOString() + ')';
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ');
+  }
+  return String(value);
+}
+
 /**
  * ForensicReport renders the full forensic analysis output with three
  * collapsible sections: Raw Metadata, AI Detection Signals, and Verdict.
@@ -266,6 +310,7 @@ export function ForensicReport({
   metadata,
   result,
   thumbnail,
+  rawExif,
 }: ForensicReportProps) {
   if (state === 'SCANNING') {
     return (
@@ -304,6 +349,12 @@ export function ForensicReport({
             <ScoringBreakdown breakdown={result.breakdown} />
           </div>
         </CollapsibleSection>
+
+        {rawExif && Object.keys(rawExif).length > 0 && (
+          <CollapsibleSection title="All Image Metadata" defaultExpanded={false}>
+            <RawExifDump rawExif={rawExif} />
+          </CollapsibleSection>
+        )}
       </div>
     );
   }

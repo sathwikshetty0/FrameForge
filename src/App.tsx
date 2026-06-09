@@ -1,16 +1,17 @@
 import { useReducer, useEffect, useCallback } from 'react';
 import type { AppState, AppError, MetadataResult, ScoringResult, UploadError } from './lib/types';
-import { loadExifr, parseExif } from './lib/exif-parser';
+import { loadExifr, parseExifFull } from './lib/exif-parser';
 import { analyze } from './lib/detection-engine';
 import { computeScore } from './lib/scoring';
 import { UploadZone } from './components/UploadZone';
 import { ForensicReport } from './components/ForensicReport';
 import { ReportExporter } from './components/ReportExporter';
 
-// --- Extended State (adds analysisTimestamp for ReportExporter) ---
+// --- Extended State (adds analysisTimestamp and rawExif) ---
 
 interface ExtendedAppState extends AppState {
   analysisTimestamp: Date | null;
+  rawExif: Record<string, unknown> | null;
 }
 
 // --- Action Types ---
@@ -18,7 +19,7 @@ interface ExtendedAppState extends AppState {
 type AppAction =
   | { type: 'FILE_ACCEPTED'; file: File }
   | { type: 'BUFFER_READY'; buffer: ArrayBuffer; thumbnail: string }
-  | { type: 'ANALYSIS_COMPLETE'; metadata: MetadataResult; result: ScoringResult }
+  | { type: 'ANALYSIS_COMPLETE'; metadata: MetadataResult; result: ScoringResult; rawExif: Record<string, unknown> }
   | { type: 'ERROR'; error: AppError }
   | { type: 'RESET' };
 
@@ -33,6 +34,7 @@ const initialState: ExtendedAppState = {
   error: null,
   scanStartTime: null,
   analysisTimestamp: null,
+  rawExif: null,
 };
 
 // --- Reducer ---
@@ -63,6 +65,7 @@ function appReducer(state: ExtendedAppState, action: AppAction): ExtendedAppStat
         pipeline: 'COMPLETE',
         metadata: action.metadata,
         result: action.result,
+        rawExif: action.rawExif,
         analysisTimestamp: new Date(),
       };
 
@@ -130,7 +133,7 @@ function App() {
   // Run the parse → detect → score pipeline
   async function runAnalysis(buffer: ArrayBuffer, fileSize: number, scanStart: number) {
     try {
-      const metadata = await parseExif(buffer);
+      const { metadata, rawExif } = await parseExifFull(buffer);
       const signals = analyze(metadata, fileSize);
       const result = computeScore(signals, metadata);
 
@@ -142,7 +145,7 @@ function App() {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
 
-      dispatch({ type: 'ANALYSIS_COMPLETE', metadata, result });
+      dispatch({ type: 'ANALYSIS_COMPLETE', metadata, result, rawExif });
     } catch (error) {
       dispatch({
         type: 'ERROR',
@@ -184,6 +187,7 @@ function App() {
         metadata={state.metadata}
         result={state.result}
         thumbnail={state.thumbnail}
+        rawExif={state.rawExif}
       />
 
       <ReportExporter

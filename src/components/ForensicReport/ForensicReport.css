@@ -322,3 +322,52 @@
   color: #ef4444;
   font-weight: 600;
 }
+
+/* Raw EXIF Dump section */
+.raw-exif-dump {
+  display: grid;
+  gap: 4px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.raw-exif-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 8px;
+  border-radius: 3px;
+  background-color: #161b26;
+  font-size: 11px;
+  opacity: 0;
+  animation: fieldFadeIn 200ms ease forwards;
+  gap: 12px;
+}
+
+.raw-exif-entry:nth-child(even) {
+  background-color: #1a1f2b;
+}
+
+.raw-exif-key {
+  font-weight: 600;
+  color: #f59e0b;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.raw-exif-value {
+  color: #cbd5e1;
+  text-align: right;
+  word-break: break-all;
+  max-width: 60%;
+}
+
+.raw-exif-count {
+  padding: 8px 0 0;
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+  border-top: 1px solid #1e2330;
+  margin-top: 8px;
+}

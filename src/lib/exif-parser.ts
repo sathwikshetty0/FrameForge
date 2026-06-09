@@ -185,11 +185,28 @@ function extractColorProfile(raw: Record<string, unknown>): MetadataField<string
 }
 
 /**
+ * Parse result including both structured metadata and raw EXIF data.
+ */
+export interface ParseExifResult {
+  metadata: MetadataResult;
+  rawExif: Record<string, unknown>;
+}
+
+/**
  * Parse EXIF metadata from an image ArrayBuffer.
  * Returns a complete MetadataResult with all fields populated.
  * Each field is marked as 'present', 'absent', or 'corrupt'.
  */
 export async function parseExif(buffer: ArrayBuffer): Promise<MetadataResult> {
+  const { metadata } = await parseExifFull(buffer);
+  return metadata;
+}
+
+/**
+ * Parse EXIF metadata and also return the complete raw EXIF data.
+ * Use this when you need access to ALL metadata fields, not just the 18 structured ones.
+ */
+export async function parseExifFull(buffer: ArrayBuffer): Promise<ParseExifResult> {
   const exifr = await loadExifr();
 
   let raw: Record<string, unknown>;
@@ -197,11 +214,10 @@ export async function parseExif(buffer: ArrayBuffer): Promise<MetadataResult> {
     const result = await exifr.parse(buffer, EXIFR_OPTIONS);
     raw = result ?? {};
   } catch {
-    // If exifr throws (corrupt file, etc.), return all fields as absent
     raw = {};
   }
 
-  return {
+  const metadata: MetadataResult = {
     cameraMake: extractString(raw, 'Make'),
     cameraModel: extractString(raw, 'Model'),
     lensMake: extractString(raw, 'LensMake'),
@@ -221,4 +237,6 @@ export async function parseExif(buffer: ArrayBuffer): Promise<MetadataResult> {
     bitDepth: extractNumber(raw, 'BitsPerSample'),
     colorProfile: extractColorProfile(raw),
   };
+
+  return { metadata, rawExif: raw };
 }
