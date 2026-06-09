@@ -132,7 +132,7 @@ function App() {
     try {
       const metadata = await parseExif(buffer);
       const signals = analyze(metadata, fileSize);
-      const result = computeScore(signals);
+      const result = computeScore(signals, metadata);
 
       // Enforce minimum 500ms animation time
       const elapsed = Date.now() - scanStart;

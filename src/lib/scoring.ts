@@ -5,6 +5,7 @@ import {
   ScoringBreakdownEntry,
   Verdict,
   ImageSource,
+  MetadataResult,
   MAX_DEDUCTIONS,
   AI_SOFTWARE_KEYWORDS,
 } from './types';
@@ -36,12 +37,12 @@ function mapScoreToVerdict(score: number): Verdict {
 
 /**
  * Determines the likely source/origin of the image based on signals and metadata.
+ * Uses camera make/model when available to identify the device.
  */
-function determineSource(signals: DetectionSignal[]): ImageSource {
-  // Check for AI software fingerprint
+function determineSource(signals: DetectionSignal[], metadata?: MetadataResult | null): ImageSource {
+  // Check for AI software fingerprint — strongest signal
   const softwareSignal = signals.find((s) => s.type === 'SOFTWARE_FINGERPRINT');
   if (softwareSignal) {
-    // Extract the matched keyword from the description
     const matchedKeyword = AI_SOFTWARE_KEYWORDS.find((kw) =>
       softwareSignal.description.toLowerCase().includes(kw.toLowerCase())
     );
@@ -55,10 +56,36 @@ function determineSource(signals: DetectionSignal[]): ImageSource {
     };
   }
 
-  // Check if many signals suggest synthetic origin
+  // If camera make or model is present, it's from a camera regardless of other signals
+  const hasCameraMake = metadata?.cameraMake?.status === 'present' && metadata.cameraMake.value;
+  const hasCameraModel = metadata?.cameraModel?.status === 'present' && metadata.cameraModel.value;
+
+  if (hasCameraMake || hasCameraModel) {
+    const makeModel = [
+      hasCameraMake ? metadata!.cameraMake.value : null,
+      hasCameraModel ? metadata!.cameraModel.value : null,
+    ].filter(Boolean).join(' ');
+
+    // Check for editing indicators (timestamp issues but camera metadata present)
+    const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
+    if (timestampIssue && timestampIssue.severity > 0.5) {
+      return {
+        type: 'edited',
+        label: `${makeModel} (edited/post-processed)`,
+        confidence: 'medium',
+      };
+    }
+
+    return {
+      type: 'camera',
+      label: makeModel,
+      confidence: 'high',
+    };
+  }
+
+  // No camera metadata at all — check if signals suggest synthetic origin
   const missingExif = signals.find((s) => s.type === 'MISSING_EXIF');
   const missingGps = signals.find((s) => s.type === 'MISSING_GPS');
-  const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
 
   if (missingExif && missingExif.severity >= 0.66 && missingGps) {
     return {
@@ -68,16 +95,15 @@ function determineSource(signals: DetectionSignal[]): ImageSource {
     };
   }
 
-  // Check for editing software (timestamp issues + some EXIF present)
-  if (timestampIssue && timestampIssue.severity > 0.5 && !missingExif) {
+  if (missingExif && missingExif.severity >= 0.33) {
     return {
-      type: 'edited',
-      label: 'Edited/Post-processed image',
-      confidence: 'medium',
+      type: 'unknown',
+      label: 'Unknown origin (limited metadata)',
+      confidence: 'low',
     };
   }
 
-  // If no significant signals, it's likely from a camera
+  // No significant signals and no camera info
   if (signals.length === 0) {
     return {
       type: 'camera',
@@ -86,19 +112,11 @@ function determineSource(signals: DetectionSignal[]): ImageSource {
     };
   }
 
-  // Minor signals but not enough to identify AI
-  if (signals.length <= 2 && !missingExif && !softwareSignal) {
-    return {
-      type: 'camera',
-      label: 'Camera/Device capture (minor anomalies)',
-      confidence: 'medium',
-    };
-  }
-
+  // Some signals but not enough to conclusively identify
   return {
-    type: 'unknown',
-    label: 'Unknown origin',
-    confidence: 'low',
+    type: 'camera',
+    label: 'Camera/Device capture (minor anomalies)',
+    confidence: 'medium',
   };
 }
 
@@ -119,7 +137,7 @@ function determineSource(signals: DetectionSignal[]): ImageSource {
  * @param signals - Array of detection signals produced by the Detection Engine
  * @returns ScoringResult with score, verdict, source, signals, and breakdown
  */
-export function computeScore(signals: DetectionSignal[]): ScoringResult {
+export function computeScore(signals: DetectionSignal[], metadata?: MetadataResult | null): ScoringResult {
   let score = 100;
   const breakdown: ScoringBreakdownEntry[] = [];
 
@@ -154,7 +172,7 @@ export function computeScore(signals: DetectionSignal[]): ScoringResult {
   score = Math.max(0, score);
 
   const verdict = mapScoreToVerdict(score);
-  const source = determineSource(signals);
+  const source = determineSource(signals, metadata);
 
   return {
     score,
