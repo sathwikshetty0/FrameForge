@@ -66,7 +66,7 @@ const KNOWN_SOFTWARE_TOOLS: Array<{ keyword: string; category: string }> = [
 
 /**
  * Determines the likely source/origin of the image based on signals and metadata.
- * Uses camera make/model and software field to identify the source.
+ * Shows both camera device AND software when both are available.
  */
 function determineSource(signals: DetectionSignal[], metadata?: MetadataResult | null): ImageSource {
   // Check for AI software fingerprint — strongest AI signal
@@ -85,38 +85,49 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
     };
   }
 
-  // Check if software field identifies a known non-AI tool
+  // Gather camera info
+  const hasCameraMake = metadata?.cameraMake?.status === 'present' && metadata.cameraMake.value;
+  const hasCameraModel = metadata?.cameraModel?.status === 'present' && metadata.cameraModel.value;
+  const makeModel = [
+    hasCameraMake ? metadata!.cameraMake.value : null,
+    hasCameraModel ? metadata!.cameraModel.value : null,
+  ].filter(Boolean).join(' ');
+
+  // Gather software info
   const softwareValue = metadata?.software?.status === 'present' ? metadata.software.value : null;
+  let softwareLabel: string | null = null;
+  let softwareCategory: string | null = null;
+
   if (softwareValue) {
     const lowerSoftware = softwareValue.toLowerCase();
     const matchedTool = KNOWN_SOFTWARE_TOOLS.find((tool) =>
       lowerSoftware.includes(tool.keyword.toLowerCase())
     );
     if (matchedTool) {
-      return {
-        type: 'edited',
-        label: `${matchedTool.category} (${softwareValue.split(',')[0].trim()})`,
-        confidence: 'high',
-      };
+      softwareLabel = softwareValue.split(',')[0].trim();
+      softwareCategory = matchedTool.category;
+    } else {
+      softwareLabel = softwareValue.split(',')[0].trim();
+      softwareCategory = 'Software';
     }
-    // Software present but not recognized as AI or known tool — use it as-is
+  }
+
+  // Build combined label showing both camera and software
+  const hasCamera = hasCameraMake || hasCameraModel;
+
+  if (hasCamera && softwareLabel) {
+    // Both camera and software present
+    const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
+    const isEdited = timestampIssue && timestampIssue.severity > 0.5;
     return {
-      type: 'edited',
-      label: `Software: ${softwareValue.split(',')[0].trim()}`,
-      confidence: 'medium',
+      type: isEdited ? 'edited' : 'camera',
+      label: `${makeModel} · ${softwareCategory}: ${softwareLabel}`,
+      confidence: 'high',
     };
   }
 
-  // If camera make or model is present, it's from a camera
-  const hasCameraMake = metadata?.cameraMake?.status === 'present' && metadata.cameraMake.value;
-  const hasCameraModel = metadata?.cameraModel?.status === 'present' && metadata.cameraModel.value;
-
-  if (hasCameraMake || hasCameraModel) {
-    const makeModel = [
-      hasCameraMake ? metadata!.cameraMake.value : null,
-      hasCameraModel ? metadata!.cameraModel.value : null,
-    ].filter(Boolean).join(' ');
-
+  if (hasCamera) {
+    // Only camera info
     const timestampIssue = signals.find((s) => s.type === 'TIMESTAMP_INCONSISTENCY');
     if (timestampIssue && timestampIssue.severity > 0.5) {
       return {
@@ -125,10 +136,18 @@ function determineSource(signals: DetectionSignal[], metadata?: MetadataResult |
         confidence: 'medium',
       };
     }
-
     return {
       type: 'camera',
       label: makeModel,
+      confidence: 'high',
+    };
+  }
+
+  if (softwareLabel) {
+    // Only software info, no camera
+    return {
+      type: 'edited',
+      label: `${softwareCategory}: ${softwareLabel}`,
       confidence: 'high',
     };
   }
