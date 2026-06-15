@@ -15,6 +15,9 @@ const SIGNAL_TYPE_LABELS: Record<SignalType, string> = {
   FILE_SIZE_ANOMALY: 'File Size Anomaly',
   COLOR_PROFILE_ABNORMALITY: 'Color Profile Abnormality',
   MISSING_GPS: 'Missing GPS',
+  PIXEL_ANALYSIS: 'Pixel Analysis',
+  PNG_METADATA_AI: 'PNG Metadata AI',
+  FILENAME_PATTERN: 'Filename Pattern',
 };
 
 /**
@@ -27,6 +30,9 @@ const ALL_SIGNAL_TYPES: SignalType[] = [
   'FILE_SIZE_ANOMALY',
   'COLOR_PROFILE_ABNORMALITY',
   'MISSING_GPS',
+  'PIXEL_ANALYSIS',
+  'PNG_METADATA_AI',
+  'FILENAME_PATTERN',
 ];
 
 /**

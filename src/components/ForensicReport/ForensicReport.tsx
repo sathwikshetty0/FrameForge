@@ -6,9 +6,11 @@ import {
   DetectionSignal,
   ScoringBreakdownEntry,
   MetadataField,
+  ElaResult,
 } from '../../lib/types';
 import { ScanningAnimation } from '../ScanningAnimation/ScanningAnimation';
 import { VerdictGauge } from '../VerdictGauge/VerdictGauge';
+import { ElaHeatmap } from '../ElaHeatmap';
 import './ForensicReport.css';
 
 export interface ForensicReportProps {
@@ -17,6 +19,7 @@ export interface ForensicReportProps {
   result: ScoringResult | null;
   thumbnail: string | null;
   rawExif?: Record<string, unknown> | null;
+  elaResult?: ElaResult | null;
 }
 
 /** Human-readable labels for metadata field keys */
@@ -61,6 +64,9 @@ const SIGNAL_TYPE_LABELS: Record<string, string> = {
   FILE_SIZE_ANOMALY: 'File Size Anomaly',
   COLOR_PROFILE_ABNORMALITY: 'Color Profile Abnormality',
   MISSING_GPS: 'Missing GPS',
+  PIXEL_ANALYSIS: 'Pixel Analysis',
+  PNG_METADATA_AI: 'PNG Metadata AI',
+  FILENAME_PATTERN: 'Filename Pattern',
 };
 
 /**
@@ -311,6 +317,7 @@ export function ForensicReport({
   result,
   thumbnail,
   rawExif,
+  elaResult,
 }: ForensicReportProps) {
   if (state === 'SCANNING') {
     return (
@@ -348,6 +355,20 @@ export function ForensicReport({
             <VerdictGauge score={result.score} verdict={result.verdict} />
             <ScoringBreakdown breakdown={result.breakdown} />
           </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection title="ELA Heatmap" defaultExpanded={false}>
+          {elaResult ? (
+            <ElaHeatmap
+              differenceData={elaResult.differenceData}
+              width={elaResult.width}
+              height={elaResult.height}
+            />
+          ) : (
+            <div className="ela-unavailable" data-testid="ela-unavailable">
+              ELA visualization is unavailable for this image
+            </div>
+          )}
         </CollapsibleSection>
 
         {rawExif && Object.keys(rawExif).length > 0 && (

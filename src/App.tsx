@@ -1,7 +1,8 @@
 import { useReducer, useEffect, useCallback } from 'react';
-import type { AppState, AppError, MetadataResult, ScoringResult, UploadError } from './lib/types';
+import type { AppState, AppError, MetadataResult, ScoringResult, UploadError, ElaResult } from './lib/types';
 import { loadExifr, parseExifFull } from './lib/exif-parser';
 import { analyze } from './lib/detection-engine';
+import { analyzePixels } from './lib/pixel-analysis-engine';
 import { computeScore } from './lib/scoring';
 import { UploadZone } from './components/UploadZone';
 import { ForensicReport } from './components/ForensicReport';
@@ -12,6 +13,7 @@ import { ReportExporter } from './components/ReportExporter';
 interface ExtendedAppState extends AppState {
   analysisTimestamp: Date | null;
   rawExif: Record<string, unknown> | null;
+  elaResult: ElaResult | null;
 }
 
 // --- Action Types ---
@@ -19,7 +21,7 @@ interface ExtendedAppState extends AppState {
 type AppAction =
   | { type: 'FILE_ACCEPTED'; file: File }
   | { type: 'BUFFER_READY'; buffer: ArrayBuffer; thumbnail: string }
-  | { type: 'ANALYSIS_COMPLETE'; metadata: MetadataResult; result: ScoringResult; rawExif: Record<string, unknown> }
+  | { type: 'ANALYSIS_COMPLETE'; metadata: MetadataResult; result: ScoringResult; rawExif: Record<string, unknown>; elaResult: ElaResult | null }
   | { type: 'ERROR'; error: AppError }
   | { type: 'RESET' };
 
@@ -35,6 +37,7 @@ const initialState: ExtendedAppState = {
   scanStartTime: null,
   analysisTimestamp: null,
   rawExif: null,
+  elaResult: null,
 };
 
 // --- Reducer ---
@@ -66,6 +69,7 @@ function appReducer(state: ExtendedAppState, action: AppAction): ExtendedAppStat
         metadata: action.metadata,
         result: action.result,
         rawExif: action.rawExif,
+        elaResult: action.elaResult,
         analysisTimestamp: new Date(),
       };
 
@@ -116,7 +120,7 @@ function App() {
 
       // Start the analysis pipeline
       const scanStart = Date.now();
-      runAnalysis(buffer, file.size, scanStart);
+      runAnalysis(buffer, file.size, file.name, scanStart);
     };
     reader.onerror = () => {
       dispatch({
@@ -130,12 +134,48 @@ function App() {
     reader.readAsArrayBuffer(file);
   }, []);
 
+  // Draw image buffer to a temporary canvas to obtain ImageData
+  async function getImageData(buffer: ArrayBuffer): Promise<ImageData | null> {
+    try {
+      const blob = new Blob([buffer]);
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(bitmap, 0, 0);
+      return ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+    } catch {
+      return null;
+    }
+  }
+
   // Run the parse → detect → score pipeline
-  async function runAnalysis(buffer: ArrayBuffer, fileSize: number, scanStart: number) {
+  async function runAnalysis(buffer: ArrayBuffer, fileSize: number, filename: string, scanStart: number) {
     try {
       const { metadata, rawExif } = await parseExifFull(buffer);
-      const signals = analyze(metadata, fileSize);
-      const result = computeScore(signals, metadata);
+
+      // Obtain ImageData from a temporary canvas for pixel-level analysis
+      const imageData = await getImageData(buffer);
+
+      // Run pixel analysis separately to get elaResult
+      let elaResult: ElaResult | null = null;
+      let pixelSignal: import('./lib/types').DetectionSignal | null = null;
+      if (imageData) {
+        const pixelResult = await analyzePixels({ imageData });
+        elaResult = pixelResult.ela;
+        pixelSignal = pixelResult.signal;
+      }
+
+      // Call analyze without imageData (to avoid double-computing pixel analysis)
+      // but with fileBuffer and filename for PNG metadata and filename detection
+      const signals = await analyze(metadata, fileSize, null, buffer, filename);
+
+      // Combine signals: detection engine signals + pixel analysis signal
+      const allSignals = pixelSignal ? [...signals, pixelSignal] : signals;
+
+      const result = computeScore(allSignals, metadata);
 
       // Enforce minimum 500ms animation time
       const elapsed = Date.now() - scanStart;
@@ -145,7 +185,7 @@ function App() {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
 
-      dispatch({ type: 'ANALYSIS_COMPLETE', metadata, result, rawExif });
+      dispatch({ type: 'ANALYSIS_COMPLETE', metadata, result, rawExif, elaResult });
     } catch (error) {
       dispatch({
         type: 'ERROR',
@@ -188,6 +228,7 @@ function App() {
         result={state.result}
         thumbnail={state.thumbnail}
         rawExif={state.rawExif}
+        elaResult={state.elaResult}
       />
 
       <ReportExporter

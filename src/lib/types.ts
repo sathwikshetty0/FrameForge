@@ -54,7 +54,10 @@ export type SignalType =
   | 'TIMESTAMP_INCONSISTENCY'
   | 'FILE_SIZE_ANOMALY'
   | 'COLOR_PROFILE_ABNORMALITY'
-  | 'MISSING_GPS';
+  | 'MISSING_GPS'
+  | 'PIXEL_ANALYSIS'
+  | 'PNG_METADATA_AI'
+  | 'FILENAME_PATTERN';
 
 /**
  * Complete scoring result including score, verdict,
@@ -168,6 +171,9 @@ export const MAX_DEDUCTIONS: Record<SignalType, number> = {
   FILE_SIZE_ANOMALY: 20,
   COLOR_PROFILE_ABNORMALITY: 15,
   MISSING_GPS: 10,
+  PIXEL_ANALYSIS: 25,
+  PNG_METADATA_AI: 35,
+  FILENAME_PATTERN: 30,
 };
 
 /**
@@ -183,3 +189,45 @@ export const AI_SOFTWARE_KEYWORDS = [
   'leonardo',
   'runway',
 ];
+
+
+// --- Pixel-Level Detection Interfaces ---
+
+/**
+ * Result of Error Level Analysis on an image.
+ * Null result indicates Canvas API failure.
+ */
+export interface ElaResult {
+  /** Mean difference value across all pixels (0–255 scale) */
+  meanDifference: number;
+  /** Standard deviation of per-block mean differences */
+  blockStdDev: number;
+  /** Severity: 0.0 (natural) to 1.0 (uniform = AI-like) */
+  severity: number;
+  /** Raw difference pixel data (for heatmap rendering), RGBA Uint8ClampedArray */
+  differenceData: Uint8ClampedArray;
+  /** Image width */
+  width: number;
+  /** Image height */
+  height: number;
+}
+
+/**
+ * Result of color histogram uniformity analysis.
+ */
+export interface HistogramResult {
+  /** 256-element frequency array for the red channel */
+  redHistogram: number[];
+  /** 256-element frequency array for the green channel */
+  greenHistogram: number[];
+  /** 256-element frequency array for the blue channel */
+  blueHistogram: number[];
+  /** Smoothness metric for the red channel (lower = smoother = more suspicious) */
+  redSmoothness: number;
+  /** Smoothness metric for the green channel */
+  greenSmoothness: number;
+  /** Smoothness metric for the blue channel */
+  blueSmoothness: number;
+  /** Combined severity: 0.0 (natural) to 1.0 (uniform) */
+  severity: number;
+}

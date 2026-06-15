@@ -89,9 +89,9 @@ describe('computeScore', () => {
     expect(result.verdict).toBe('LIKELY SYNTHETIC');
   });
 
-  it('produces breakdown with all 6 signal types', () => {
+  it('produces breakdown with all 9 signal types', () => {
     const result = computeScore([]);
-    expect(result.breakdown).toHaveLength(6);
+    expect(result.breakdown).toHaveLength(9);
 
     const types = result.breakdown.map((b) => b.signalType);
     expect(types).toContain('SOFTWARE_FINGERPRINT');
@@ -100,6 +100,9 @@ describe('computeScore', () => {
     expect(types).toContain('FILE_SIZE_ANOMALY');
     expect(types).toContain('COLOR_PROFILE_ABNORMALITY');
     expect(types).toContain('MISSING_GPS');
+    expect(types).toContain('PIXEL_ANALYSIS');
+    expect(types).toContain('PNG_METADATA_AI');
+    expect(types).toContain('FILENAME_PATTERN');
   });
 
   it('marks non-triggered types as triggered=false with pointsDeducted=0', () => {
@@ -127,6 +130,9 @@ describe('computeScore', () => {
       FILE_SIZE_ANOMALY: 20,
       COLOR_PROFILE_ABNORMALITY: 15,
       MISSING_GPS: 10,
+      PIXEL_ANALYSIS: 25,
+      PNG_METADATA_AI: 35,
+      FILENAME_PATTERN: 30,
     };
     for (const entry of result.breakdown) {
       expect(entry.maxDeduction).toBe(expected[entry.signalType]);

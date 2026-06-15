@@ -3,6 +3,9 @@ import {
   DetectionSignal,
   AI_SOFTWARE_KEYWORDS,
 } from './types';
+import { analyzePixels } from './pixel-analysis-engine';
+import { parsePngChunks, detectAiMetadata } from './png-metadata-parser';
+import { detectFilenamePattern } from './filename-detector';
 
 /**
  * Evaluates metadata for AI/synthetic indicators and produces detection signals.
@@ -10,9 +13,18 @@ import {
  *
  * @param metadata - The extracted metadata from the image
  * @param fileSize - The actual file size in bytes
+ * @param imageData - Optional ImageData for pixel-level analysis (ELA + Histogram)
+ * @param fileBuffer - Optional ArrayBuffer for PNG metadata chunk parsing
+ * @param filename - Optional filename for AI tool pattern detection
  * @returns An array of triggered DetectionSignal objects
  */
-export function analyze(metadata: MetadataResult, fileSize: number): DetectionSignal[] {
+export async function analyze(
+  metadata: MetadataResult,
+  fileSize: number,
+  imageData?: ImageData | null,
+  fileBuffer?: ArrayBuffer | null,
+  filename?: string
+): Promise<DetectionSignal[]> {
   const signals: DetectionSignal[] = [];
 
   const missingExif = evaluateMissingExif(metadata);
@@ -32,6 +44,31 @@ export function analyze(metadata: MetadataResult, fileSize: number): DetectionSi
 
   const missingGps = evaluateMissingGps(metadata);
   if (missingGps) signals.push(missingGps);
+
+  // Pixel-level analysis (ELA + Histogram)
+  if (imageData) {
+    const pixelResult = await analyzePixels({ imageData });
+    if (pixelResult.signal) {
+      signals.push(pixelResult.signal);
+    }
+  }
+
+  // PNG metadata chunk parsing
+  if (fileBuffer) {
+    const chunks = parsePngChunks(fileBuffer);
+    const pngSignal = detectAiMetadata(chunks);
+    if (pngSignal) {
+      signals.push(pngSignal);
+    }
+  }
+
+  // Filename pattern detection
+  if (filename) {
+    const filenameSignal = detectFilenamePattern(filename);
+    if (filenameSignal) {
+      signals.push(filenameSignal);
+    }
+  }
 
   return signals;
 }

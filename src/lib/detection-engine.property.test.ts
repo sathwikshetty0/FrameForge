@@ -80,9 +80,9 @@ const coreFieldPresenceArb = fc.tuple(
 ) as fc.Arbitrary<[boolean, boolean, boolean, boolean, boolean, boolean]>;
 
 describe('Detection Engine - Property 5: MISSING_EXIF signal threshold', () => {
-  it('triggers MISSING_EXIF iff fewer than 3 of 6 core fields are present', () => {
-    fc.assert(
-      fc.property(coreFieldPresenceArb, (corePresent) => {
+  it('triggers MISSING_EXIF iff fewer than 3 of 6 core fields are present', async () => {
+    await fc.assert(
+      fc.asyncProperty(coreFieldPresenceArb, async (corePresent) => {
         const metadata = buildMetadata(corePresent);
         const presentCount = corePresent.filter(Boolean).length;
 
@@ -90,7 +90,7 @@ describe('Detection Engine - Property 5: MISSING_EXIF signal threshold', () => {
         // 4000 * 3000 * 3 = 36,000,000 expected; use a reasonable actual size
         const fileSize = 4000 * 3000 * 3 * 0.5; // ratio 0.5, within [0.2, 5.0]
 
-        const signals = analyze(metadata, fileSize);
+        const signals = await analyze(metadata, fileSize);
         const missingExifSignals = signals.filter((s) => s.type === 'MISSING_EXIF');
 
         if (presentCount < 3) {
@@ -109,16 +109,16 @@ describe('Detection Engine - Property 5: MISSING_EXIF signal threshold', () => {
     );
   });
 
-  it('severity equals (3 - presentCount) / 3 when triggered', () => {
-    fc.assert(
-      fc.property(
+  it('severity equals (3 - presentCount) / 3 when triggered', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         coreFieldPresenceArb.filter((cp) => cp.filter(Boolean).length < 3),
-        (corePresent) => {
+        async (corePresent) => {
           const metadata = buildMetadata(corePresent);
           const presentCount = corePresent.filter(Boolean).length;
           const fileSize = 4000 * 3000 * 3 * 0.5;
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const missingExifSignals = signals.filter((s) => s.type === 'MISSING_EXIF');
 
           expect(missingExifSignals.length).toBe(1);
@@ -235,11 +235,11 @@ const keywordSoftwareArb = fc
 describe('Detection Engine - Property 6: SOFTWARE_FINGERPRINT detection', () => {
   const fileSize = 4000 * 3000 * 3 * 0.5; // ratio 0.5, within [0.2, 5.0]
 
-  it('does NOT trigger SOFTWARE_FINGERPRINT when Software field does not contain any AI keyword', () => {
-    fc.assert(
-      fc.property(nonKeywordSoftwareArb, (softwareValue) => {
+  it('does NOT trigger SOFTWARE_FINGERPRINT when Software field does not contain any AI keyword', async () => {
+    await fc.assert(
+      fc.asyncProperty(nonKeywordSoftwareArb, async (softwareValue) => {
         const metadata = buildMetadataWithSoftware(softwareValue);
-        const signals = analyze(metadata, fileSize);
+        const signals = await analyze(metadata, fileSize);
         const softwareSignals = signals.filter((s) => s.type === 'SOFTWARE_FINGERPRINT');
 
         expect(softwareSignals.length).toBe(0);
@@ -248,11 +248,11 @@ describe('Detection Engine - Property 6: SOFTWARE_FINGERPRINT detection', () => 
     );
   });
 
-  it('triggers SOFTWARE_FINGERPRINT with severity 1.0 when Software field contains an AI keyword (case-insensitive)', () => {
-    fc.assert(
-      fc.property(keywordSoftwareArb, (softwareValue) => {
+  it('triggers SOFTWARE_FINGERPRINT with severity 1.0 when Software field contains an AI keyword (case-insensitive)', async () => {
+    await fc.assert(
+      fc.asyncProperty(keywordSoftwareArb, async (softwareValue) => {
         const metadata = buildMetadataWithSoftware(softwareValue);
-        const signals = analyze(metadata, fileSize);
+        const signals = await analyze(metadata, fileSize);
         const softwareSignals = signals.filter((s) => s.type === 'SOFTWARE_FINGERPRINT');
 
         expect(softwareSignals.length).toBe(1);
@@ -310,19 +310,19 @@ function buildTimestampMetadata(
 }
 
 describe('Detection Engine - Property 7: TIMESTAMP_INCONSISTENCY detection', () => {
-  it('does NOT trigger when both timestamps present and diff ≤ 24h', () => {
-    fc.assert(
-      fc.property(
+  it('does NOT trigger when both timestamps present and diff ≤ 24h', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.date({ min: new Date('2000-01-01'), max: new Date('2030-01-01') }),
         fc.integer({ min: 0, max: 24 * 60 * 60 * 1000 }), // 0 to 24h in ms
-        (baseDate, offsetMs) => {
+        async (baseDate, offsetMs) => {
           const dateOriginal = presentDate(baseDate);
           const modify = presentDate(new Date(baseDate.getTime() + offsetMs));
 
           const metadata = buildTimestampMetadata(dateOriginal, modify);
           const fileSize = 1920 * 1080 * 3 * 0.5; // ratio within [0.2, 5.0]
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const timestampSignals = signals.filter(
             (s) => s.type === 'TIMESTAMP_INCONSISTENCY'
           );
@@ -335,20 +335,20 @@ describe('Detection Engine - Property 7: TIMESTAMP_INCONSISTENCY detection', () 
     );
   });
 
-  it('triggers with correct severity when both timestamps present and diff > 24h', () => {
-    fc.assert(
-      fc.property(
+  it('triggers with correct severity when both timestamps present and diff > 24h', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.date({ min: new Date('2000-01-01'), max: new Date('2025-01-01') }),
         // Offset > 24h (86,400,001ms) up to 60 days (5,184,000,000ms)
         fc.integer({ min: 24 * 60 * 60 * 1000 + 1, max: 60 * 24 * 60 * 60 * 1000 }),
-        (baseDate, offsetMs) => {
+        async (baseDate, offsetMs) => {
           const dateOriginal = presentDate(baseDate);
           const modify = presentDate(new Date(baseDate.getTime() + offsetMs));
 
           const metadata = buildTimestampMetadata(dateOriginal, modify);
           const fileSize = 1920 * 1080 * 3 * 0.5;
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const timestampSignals = signals.filter(
             (s) => s.type === 'TIMESTAMP_INCONSISTENCY'
           );
@@ -366,18 +366,18 @@ describe('Detection Engine - Property 7: TIMESTAMP_INCONSISTENCY detection', () 
     );
   });
 
-  it('triggers with severity 0.5 when DateTimeOriginal is absent', () => {
-    fc.assert(
-      fc.property(
+  it('triggers with severity 0.5 when DateTimeOriginal is absent', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.date({ min: new Date('2000-01-01'), max: new Date('2030-01-01') }),
-        (modDate) => {
+        async (modDate) => {
           const dateOriginal = absent<Date>();
           const modify = presentDate(modDate);
 
           const metadata = buildTimestampMetadata(dateOriginal, modify);
           const fileSize = 1920 * 1080 * 3 * 0.5;
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const timestampSignals = signals.filter(
             (s) => s.type === 'TIMESTAMP_INCONSISTENCY'
           );
@@ -391,18 +391,18 @@ describe('Detection Engine - Property 7: TIMESTAMP_INCONSISTENCY detection', () 
     );
   });
 
-  it('triggers with severity 0.5 when ModifyDate is absent', () => {
-    fc.assert(
-      fc.property(
+  it('triggers with severity 0.5 when ModifyDate is absent', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.date({ min: new Date('2000-01-01'), max: new Date('2030-01-01') }),
-        (origDate) => {
+        async (origDate) => {
           const dateOriginal = presentDate(origDate);
           const modify = absent<Date>();
 
           const metadata = buildTimestampMetadata(dateOriginal, modify);
           const fileSize = 1920 * 1080 * 3 * 0.5;
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const timestampSignals = signals.filter(
             (s) => s.type === 'TIMESTAMP_INCONSISTENCY'
           );
@@ -487,16 +487,16 @@ const bitDepthFieldArb: fc.Arbitrary<MetadataField<number>> = fc.oneof(
 );
 
 describe('Detection Engine - Property 9: COLOR_PROFILE_ABNORMALITY detection', () => {
-  it('triggers COLOR_PROFILE_ABNORMALITY iff colorProfile absent OR bitDepth not 8/16', () => {
-    fc.assert(
-      fc.property(colorProfileFieldArb, bitDepthFieldArb, (colorProfile, bitDepth) => {
+  it('triggers COLOR_PROFILE_ABNORMALITY iff colorProfile absent OR bitDepth not 8/16', async () => {
+    await fc.assert(
+      fc.asyncProperty(colorProfileFieldArb, bitDepthFieldArb, async (colorProfile, bitDepth) => {
         const metadata = buildColorProfileMetadata(colorProfile, bitDepth);
 
         // Use a file size that won't trigger FILE_SIZE_ANOMALY
         // 4000 * 3000 * 3 = 36,000,000 expected; ratio 0.5 is within [0.2, 5.0]
         const fileSize = 4000 * 3000 * 3 * 0.5;
 
-        const signals = analyze(metadata, fileSize);
+        const signals = await analyze(metadata, fileSize);
         const colorSignals = signals.filter((s) => s.type === 'COLOR_PROFILE_ABNORMALITY');
 
         const profileAbsent =
@@ -518,13 +518,13 @@ describe('Detection Engine - Property 9: COLOR_PROFILE_ABNORMALITY detection', (
     );
   });
 
-  it('severity is 1.0 when both conditions met, 0.5 when only one condition met', () => {
-    fc.assert(
-      fc.property(colorProfileFieldArb, bitDepthFieldArb, (colorProfile, bitDepth) => {
+  it('severity is 1.0 when both conditions met, 0.5 when only one condition met', async () => {
+    await fc.assert(
+      fc.asyncProperty(colorProfileFieldArb, bitDepthFieldArb, async (colorProfile, bitDepth) => {
         const metadata = buildColorProfileMetadata(colorProfile, bitDepth);
         const fileSize = 4000 * 3000 * 3 * 0.5;
 
-        const signals = analyze(metadata, fileSize);
+        const signals = await analyze(metadata, fileSize);
         const colorSignals = signals.filter((s) => s.type === 'COLOR_PROFILE_ABNORMALITY');
 
         const profileAbsent =
@@ -592,18 +592,18 @@ function buildMetadataForFileSize(width: number, height: number): MetadataResult
 }
 
 describe('Detection Engine - Property 8: FILE_SIZE_ANOMALY detection', () => {
-  it('triggers FILE_SIZE_ANOMALY iff ratio < 0.2 or ratio > 5.0', () => {
-    fc.assert(
-      fc.property(
+  it('triggers FILE_SIZE_ANOMALY iff ratio < 0.2 or ratio > 5.0', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.integer({ min: 100, max: 10000 }), // width
         fc.integer({ min: 100, max: 10000 }), // height
         fc.integer({ min: 1, max: 500_000_000 }), // fileSize (positive integer)
-        (width, height, fileSize) => {
+        async (width, height, fileSize) => {
           const metadata = buildMetadataForFileSize(width, height);
           const expectedSize = width * height * 3;
           const ratio = fileSize / expectedSize;
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const fileSizeSignals = signals.filter((s) => s.type === 'FILE_SIZE_ANOMALY');
 
           if (ratio < 0.2 || ratio > 5.0) {
@@ -620,13 +620,13 @@ describe('Detection Engine - Property 8: FILE_SIZE_ANOMALY detection', () => {
     );
   });
 
-  it('severity equals min(1.0, abs(ratio - 1.0) / 4.0) when triggered', () => {
-    fc.assert(
-      fc.property(
+  it('severity equals min(1.0, abs(ratio - 1.0) / 4.0) when triggered', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.integer({ min: 100, max: 10000 }), // width
         fc.integer({ min: 100, max: 10000 }), // height
         fc.integer({ min: 1, max: 500_000_000 }), // fileSize (positive integer)
-        (width, height, fileSize) => {
+        async (width, height, fileSize) => {
           const metadata = buildMetadataForFileSize(width, height);
           const expectedSize = width * height * 3;
           const ratio = fileSize / expectedSize;
@@ -634,7 +634,7 @@ describe('Detection Engine - Property 8: FILE_SIZE_ANOMALY detection', () => {
           // Only test when signal should trigger
           fc.pre(ratio < 0.2 || ratio > 5.0);
 
-          const signals = analyze(metadata, fileSize);
+          const signals = await analyze(metadata, fileSize);
           const fileSizeSignals = signals.filter((s) => s.type === 'FILE_SIZE_ANOMALY');
 
           expect(fileSizeSignals.length).toBe(1);
@@ -725,13 +725,13 @@ const arbMetadataResult: fc.Arbitrary<MetadataResult> = fc.record({
 });
 
 describe('Detection Engine - Property 10: Signal structure invariant', () => {
-  it('every signal produced has valid type, severity in [0,1], non-empty triggerField, and non-empty description', () => {
-    fc.assert(
-      fc.property(
+  it('every signal produced has valid type, severity in [0,1], non-empty triggerField, and non-empty description', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         arbMetadataResult,
         fc.integer({ min: 1, max: 100_000_000 }),
-        (metadata, fileSize) => {
-          const signals = analyze(metadata, fileSize);
+        async (metadata, fileSize) => {
+          const signals = await analyze(metadata, fileSize);
 
           for (const signal of signals) {
             // Assert type is one of the 6 valid SignalType values

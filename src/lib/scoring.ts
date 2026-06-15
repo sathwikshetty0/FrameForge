@@ -12,7 +12,7 @@ import {
 
 /**
  * All signal types in the system, used to ensure the breakdown
- * always contains all 6 types regardless of trigger status.
+ * always contains all signal types regardless of trigger status.
  */
 const ALL_SIGNAL_TYPES: SignalType[] = [
   'SOFTWARE_FINGERPRINT',
@@ -21,6 +21,9 @@ const ALL_SIGNAL_TYPES: SignalType[] = [
   'FILE_SIZE_ANOMALY',
   'COLOR_PROFILE_ABNORMALITY',
   'MISSING_GPS',
+  'PIXEL_ANALYSIS',
+  'PNG_METADATA_AI',
+  'FILENAME_PATTERN',
 ];
 
 /**

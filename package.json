@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "author": "Sathwik Shetty <sathwikshettyn2@gmail.com> (https://github.com/sathwikshetty0)",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
